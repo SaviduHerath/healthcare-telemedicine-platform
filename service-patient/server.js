@@ -4,6 +4,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { setServers } from "node:dns/promises";
 import patientRoutes from './routes/patientRoutes.js';
+import path from 'path';
+import uploadRoutes from './routes/uploadRoutes.js';
 
 setServers(["1.1.1.1", "8.8.8.8"]);
 
@@ -18,6 +20,10 @@ app.use(express.json());
 
 // Tell the app to use your patient routes
 app.use('/api/patients', patientRoutes);
+app.use('/api/patients', uploadRoutes);
+
+const __dirname = path.resolve(); 
+app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
 // Database Connection
 mongoose.connect(process.env.MONGO_URI)
