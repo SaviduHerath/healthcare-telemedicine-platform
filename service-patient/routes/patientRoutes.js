@@ -3,6 +3,7 @@ import { registerPatient } from '../controllers/patientController.js';
 import { loginPatient } from '../controllers/patientController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { getPatientProfile } from '../controllers/patientController.js';    
+import { updatePatientProfile } from '../controllers/patientController.js';
 
 const router = express.Router();
 
@@ -13,5 +14,7 @@ router.post('/register', registerPatient);
 router.post('/login', loginPatient);
 
 router.get('/profile', protect, getPatientProfile);
+
+router.put('/profile', protect, updatePatientProfile);
 
 export default router;

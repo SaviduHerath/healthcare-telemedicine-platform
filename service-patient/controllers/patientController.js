@@ -83,3 +83,40 @@ export const getPatientProfile = async (req, res) => {
     res.status(500).json({ message: 'Server error while fetching profile' });
   }
 };
+
+// @desc    Update patient profile
+// @route   PUT /api/patients/profile
+// @access  Private (Requires Token)
+export const updatePatientProfile = async (req, res) => {
+  try {
+    const patient = await Patient.findById(req.patient.id);
+
+    if (patient) {
+      // Update fields if they are provided in the request, otherwise keep the old ones
+      patient.name = req.body.name || patient.name;
+      patient.contactNumber = req.body.contactNumber || patient.contactNumber;
+      
+      // If the user sends a new medical condition, add it to the array
+      if (req.body.newMedicalHistory) {
+        patient.medicalHistory.push(req.body.newMedicalHistory);
+      }
+
+      // Save the updated patient
+      const updatedPatient = await patient.save();
+
+      res.status(200).json({
+        message: 'Profile updated successfully',
+        patient: {
+          id: updatedPatient._id,
+          name: updatedPatient.name,
+          contactNumber: updatedPatient.contactNumber,
+          medicalHistory: updatedPatient.medicalHistory
+        }
+      });
+    } else {
+      res.status(404).json({ message: 'Patient not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Server error while updating profile' });
+  }
+};
