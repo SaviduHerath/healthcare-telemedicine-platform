@@ -6,6 +6,8 @@ import Register from './pages/Register';
 import './App.css'
 import DoctorLogin from './pages/DoctorLogin';
 import DoctorDashboard from './pages/DoctorDashboard';
+import AdminLogin from './pages/AdminLogin';        // <-- Add
+import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
 
@@ -24,6 +26,10 @@ function App() {
         {/* Doctor Routes */}
         <Route path="/doctor/login" element={<DoctorLogin />} />
         <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+
+        {/* Admin Routes */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
       </Routes>
     </Router>
   )
