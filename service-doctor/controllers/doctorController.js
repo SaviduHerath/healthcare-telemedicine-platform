@@ -121,3 +121,23 @@ export const getApprovedDoctors = async (req, res) => {
     res.status(500).json({ message: 'Server error fetching doctors' });
   }
 };
+
+// @desc    Get all PENDING doctors (For Admin use)
+// @route   GET /api/doctors/pending
+export const getPendingDoctors = async (req, res) => {
+  const doctors = await Doctor.find({ isApproved: false }).select('-password');
+  res.json(doctors);
+};
+
+// @desc    Approve a doctor (For Admin use)
+// @route   PUT /api/doctors/:id/approve
+export const approveDoctor = async (req, res) => {
+  const doctor = await Doctor.findById(req.params.id);
+  if (doctor) {
+    doctor.isApproved = true;
+    await doctor.save();
+    res.json({ message: 'Doctor approved successfully' });
+  } else {
+    res.status(404).json({ message: 'Doctor not found' });
+  }
+};
