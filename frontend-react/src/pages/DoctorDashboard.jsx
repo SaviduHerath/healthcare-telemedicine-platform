@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios'; // FIX 1: Imported axios
 import doctorAPI from '../services/doctorApi';
 
 const DoctorDashboard = () => {
@@ -8,6 +9,24 @@ const DoctorDashboard = () => {
   const [fee, setFee] = useState('');
   const [experience, setExperience] = useState('');
   const [msg, setMsg] = useState({ text: '', type: '' });
+  const [appointments, setAppointments] = useState([]);
+
+  // FIX 2: Renamed this variable to 'localDoctor' so it doesn't conflict with the 'doctor' state above
+  const localDoctor = JSON.parse(localStorage.getItem('doctorData'));
+
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      try {
+        // Updated to use localDoctor.id
+        const res = await axios.get(`http://localhost:5004/api/appointments/doctor/${localDoctor.id}`);
+        setAppointments(res.data);
+      } catch (err) {
+        console.error("Failed to load schedule");
+      }
+    };
+    // Updated to use localDoctor.id
+    if (localDoctor?.id) fetchSchedule();
+  }, [localDoctor?.id]);
 
   useEffect(() => {
     fetchProfile();
@@ -39,7 +58,7 @@ const DoctorDashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('doctorToken');
-    localStorage.removeItem('doctor');
+    localStorage.removeItem('doctorData'); // Ensure this matches what you use to login
     navigate('/doctor/login');
   };
 

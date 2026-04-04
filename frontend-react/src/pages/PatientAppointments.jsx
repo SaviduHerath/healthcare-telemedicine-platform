@@ -22,13 +22,38 @@ const PatientAppointments = () => {
     fetchDoctors();
   }, []);
 
-  // 2. Handle the Booking Action
+  // 2. Handle the Booking Action (Login.jsx stores JSON under key "patient", not "patientData")
   const submitBooking = async (e) => {
     e.preventDefault();
-    // Later, this will send a POST request to the Appointment Service (Port 5004)
-    alert(`Mock Booking Successful!\nDoctor: ${bookingModal.name}\nDate: ${appointmentDate}\n\nWaiting for Port 5004 backend to be built!`);
-    setBookingModal(null);
-    setAppointmentDate('');
+    const raw = localStorage.getItem('patient');
+    if (!raw) {
+      alert('Please log in as a patient before booking.');
+      return;
+    }
+    let patientData;
+    try {
+      patientData = JSON.parse(raw);
+    } catch {
+      alert('Session data is invalid. Please log in again.');
+      return;
+    }
+
+    try {
+      await axios.post('http://localhost:5004/api/appointments/book', {
+        patientId: patientData.id,
+        patientName: patientData.name,
+        patientEmail: patientData.email,
+        patientPhone: patientData.contactNumber || '+1234567890',
+        doctorId: bookingModal._id,
+        appointmentDate: appointmentDate
+      });
+
+      alert('Booking Successful! Check your Email/SMS for confirmation.');
+      setBookingModal(null);
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Failed to book appointment.';
+      alert(msg);
+    }
   };
 
   return (
