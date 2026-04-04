@@ -1,3 +1,4 @@
+import uploadRoutes from './routes/uploadRoutes.js';
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -5,7 +6,7 @@ import dotenv from 'dotenv';
 import { setServers } from "node:dns/promises";
 import patientRoutes from './routes/patientRoutes.js';
 import path from 'path';
-import uploadRoutes from './routes/uploadRoutes.js';
+
 
 setServers(["1.1.1.1", "8.8.8.8"]);
 
