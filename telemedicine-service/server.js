@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 5003;
 const MONGO_URI = process.env.MONGO_URI;
 
 mongoose
-  .connect(MONGO_URI)
+  .connect(MONGO_URI, { family: 4 })
   .then(() => {
     console.log("Telemedicine Service connected to MongoDB");
     app.listen(PORT, () => {

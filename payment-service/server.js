@@ -22,7 +22,7 @@ app.use('/api/payments', paymentRoutes);
 
 const PORT = process.env.PORT || 5009;
 
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI, { family: 4 })
     .then(() => {
         console.log("✅ Payment Database Connected");
         app.listen(PORT, () => console.log(`💳 Payment Service running on port ${PORT}`));

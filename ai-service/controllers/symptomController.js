@@ -1,4 +1,5 @@
 const Groq = require("groq-sdk");
+const axios = require("axios");
 const SymptomCheck = require("../models/symptomCheck");
 
 exports.analyzeSymptoms = async (req, res) => {
@@ -48,8 +49,10 @@ exports.analyzeSymptoms = async (req, res) => {
 //get patients
 exports.getPatients = async (req, res) => {
   try {
+    const patientServiceUrl =
+      process.env.PATIENT_SERVICE_URL || "http://patient-service:5001";
     const response = await axios.get(
-      "http://localhost:5001/api/admin/all-patients"
+      `${patientServiceUrl}/api/admin/all-patients`
     );
 
     res.status(200).json(response.data);

@@ -57,6 +57,8 @@ services:
       - "5006:5006"
     env_file:
       - ./ai-service/.env
+    environment:
+      PATIENT_SERVICE_URL: http://patient-service:5001
 
   notification-service:
     build: ./notification-service
