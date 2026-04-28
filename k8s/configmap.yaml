@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: healthcare-config
+  namespace: healthcare-platform
+data:
+  PATIENT_PORT: "5001"
+  DOCTOR_PORT: "5002"
+  TELEMEDICINE_PORT: "5003"
+  APPOINTMENT_PORT: "5004"
+  AI_PORT: "5006"
+  NOTIFICATION_PORT: "5008"
+  PAYMENT_PORT: "5009"
+  API_GATEWAY_PORT: "5000"
+  SITE_NAME: "HealthCare"
+  SMS_PROVIDER: "TEXT_LK"
+  PATIENT_SERVICE: "http://patient-service:5001"
+  DOCTOR_SERVICE: "http://doctor-service:5002"
+  TELEMEDICINE_SERVICE: "http://telemedicine-service:5003"
+  AI_SERVICE: "http://ai-service:5006"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:5008"
+  APPOINTMENT_SERVICE_URL: "http://appointment-service:5004"
+  DOCTOR_SERVICE_URL: "http://doctor-service:5002"
+  PATIENT_SERVICE_URL: "http://patient-service:5001"

@@ -1,0 +1,86 @@
+services:
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "5010:5000"
+    env_file:
+      - ./api-gateway/.env
+    environment:
+      PATIENT_SERVICE: http://patient-service:5001
+      DOCTOR_SERVICE: http://doctor-service:5002
+      TELEMEDICINE_SERVICE: http://telemedicine-service:5003
+      AI_SERVICE: http://ai-service:5006
+    depends_on:
+      - patient-service
+      - doctor-service
+      - telemedicine-service
+      - ai-service
+
+  patient-service:
+    build: ./patient-service
+    ports:
+      - "5001:5001"
+    env_file:
+      - ./patient-service/.env
+
+  doctor-service:
+    build: ./doctor-service
+    ports:
+      - "5002:5002"
+    env_file:
+      - ./doctor-service/.env
+    environment:
+      NOTIFICATION_SERVICE_URL: http://notification-service:5008
+
+  telemedicine-service:
+    build: ./telemedicine-service
+    ports:
+      - "5003:5003"
+    env_file:
+      - ./telemedicine-service/.env
+    environment:
+      DOCTOR_SERVICE_URL: http://doctor-service:5002
+      PATIENT_SERVICE_URL: http://patient-service:5001
+
+  appointment-service:
+    build: ./appointment-service
+    ports:
+      - "5004:5004"
+    env_file:
+      - ./appointment-service/.env
+    environment:
+      NOTIFICATION_SERVICE_URL: http://notification-service:5008
+
+  ai-service:
+    build: ./ai-service
+    ports:
+      - "5006:5006"
+    env_file:
+      - ./ai-service/.env
+
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "5008:5008"
+    env_file:
+      - ./notification-service/.env
+
+  payment-service:
+    build: ./payment-service
+    ports:
+      - "5009:5009"
+    env_file:
+      - ./payment-service/.env
+    environment:
+      APPOINTMENT_SERVICE_URL: http://appointment-service:5004
+      NOTIFICATION_SERVICE_URL: http://notification-service:5008
+    depends_on:
+      - appointment-service
+      - notification-service
+
+  client:
+    build: ./client
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api-gateway

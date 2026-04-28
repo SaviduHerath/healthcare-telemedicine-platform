@@ -1,0 +1,406 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patient-service
+  namespace: healthcare-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: patient-service
+  template:
+    metadata:
+      labels:
+        app: patient-service
+    spec:
+      containers:
+        - name: patient-service
+          image: healthcare-platform/patient-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5001
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: PATIENT_PORT
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: PATIENT_MONGO_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: JWT_SECRET
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: doctor-service
+  namespace: healthcare-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: doctor-service
+  template:
+    metadata:
+      labels:
+        app: doctor-service
+    spec:
+      containers:
+        - name: doctor-service
+          image: healthcare-platform/doctor-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5002
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: DOCTOR_PORT
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: DOCTOR_MONGO_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: JWT_SECRET
+            - name: NOTIFICATION_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: NOTIFICATION_SERVICE_URL
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemedicine-service
+  namespace: healthcare-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telemedicine-service
+  template:
+    metadata:
+      labels:
+        app: telemedicine-service
+    spec:
+      containers:
+        - name: telemedicine-service
+          image: healthcare-platform/telemedicine-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5003
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: TELEMEDICINE_PORT
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: TELEMEDICINE_MONGO_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: JWT_SECRET
+            - name: DOCTOR_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: DOCTOR_SERVICE_URL
+            - name: PATIENT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: PATIENT_SERVICE_URL
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appointment-service
+  namespace: healthcare-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: appointment-service
+  template:
+    metadata:
+      labels:
+        app: appointment-service
+    spec:
+      containers:
+        - name: appointment-service
+          image: healthcare-platform/appointment-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5004
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: APPOINTMENT_PORT
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: APPOINTMENT_MONGO_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: JWT_SECRET
+            - name: NOTIFICATION_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: NOTIFICATION_SERVICE_URL
+          volumeMounts:
+            - name: appointment-uploads
+              mountPath: /app/uploads
+      volumes:
+        - name: appointment-uploads
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service
+  namespace: healthcare-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-service
+  template:
+    metadata:
+      labels:
+        app: ai-service
+    spec:
+      containers:
+        - name: ai-service
+          image: healthcare-platform/ai-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5006
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: AI_PORT
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: AI_MONGO_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: JWT_SECRET
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: GROQ_API_KEY
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: healthcare-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: healthcare-platform/notification-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5008
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: NOTIFICATION_PORT
+            - name: SITE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: SITE_NAME
+            - name: SMS_PROVIDER
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: SMS_PROVIDER
+            - name: EMAIL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: EMAIL_USER
+            - name: EMAIL_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: EMAIL_PASS
+            - name: TEXTLK_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: TEXTLK_API_TOKEN
+            - name: TEXTLK_SENDER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: TEXTLK_SENDER_ID
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: healthcare-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+        - name: payment-service
+          image: healthcare-platform/payment-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5009
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: PAYMENT_PORT
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: PAYMENT_MONGO_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: JWT_SECRET
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: STRIPE_SECRET_KEY
+            - name: SITE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: SITE_NAME
+            - name: NOTIFICATION_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: NOTIFICATION_SERVICE_URL
+            - name: APPOINTMENT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: APPOINTMENT_SERVICE_URL
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: healthcare-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: healthcare-platform/api-gateway:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: API_GATEWAY_PORT
+            - name: PATIENT_SERVICE
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: PATIENT_SERVICE
+            - name: DOCTOR_SERVICE
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: DOCTOR_SERVICE
+            - name: TELEMEDICINE_SERVICE
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: TELEMEDICINE_SERVICE
+            - name: AI_SERVICE
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: AI_SERVICE
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client
+  namespace: healthcare-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: client
+  template:
+    metadata:
+      labels:
+        app: client
+    spec:
+      containers:
+        - name: client
+          image: healthcare-platform/client:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5173
