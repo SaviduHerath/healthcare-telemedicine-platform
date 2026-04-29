@@ -8,6 +8,7 @@ import {
 } from '../../api/appointmentService';
 import { createPaymentCheckout } from '../../api/paymentService';
 import PaymentModal from '../../components/PaymentModal';
+import { getAppointmentRoomName } from '../../utils/telemedicineRoom';
 
 const PatientDashboard = () => {
   const navigate = useNavigate();
@@ -28,6 +29,26 @@ const PatientDashboard = () => {
     }
     fetchMyAppointments();
   }, [patientId, navigate]);
+
+  // Keep appointment status fresh (e.g., when doctor marks an appointment completed)
+  useEffect(() => {
+    if (!patientId) return;
+
+    const intervalId = setInterval(() => {
+      fetchMyAppointments();
+    }, 450000);
+
+    const handleWindowFocus = () => {
+      fetchMyAppointments();
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [patientId]);
 
   const fetchMyAppointments = async () => {
     setLoading(true);
@@ -53,6 +74,11 @@ const PatientDashboard = () => {
   };
 
   const handleRescheduleClick = (appt) => {
+    if (appt.status === 'Paid' || appt.status === 'Completed') {
+      alert('Rescheduling is disabled after video call is enabled. You can still cancel this appointment.');
+      return;
+    }
+
     if (rescheduleData.activeId === appt._id) {
       setRescheduleData({ activeId: null, date: '', slots: [], selectedSlot: '', loadingSlots: false });
     } else {
@@ -104,8 +130,8 @@ const PatientDashboard = () => {
 
   // Updated Navigation to Telemedicine
   const handleVideoCall = (appt) => {
-    if (appt.status === 'Paid' || appt.status === 'Completed') {
-      const roomName = `appointment-${appt._id}`;
+    if (appt.status === 'Paid') {
+      const roomName = getAppointmentRoomName(appt._id);
       // Navigating to /telemedicine as requested
       navigate('/telemedicine', { 
         state: { 
@@ -175,8 +201,12 @@ const PatientDashboard = () => {
                     </span>
                     {appt.status !== 'Completed' && appt.status !== 'Declined' && (
                       <div className="flex gap-2">
-                        <button onClick={() => handleRescheduleClick(appt)} className="text-xs font-medium text-slate-600 hover:text-blue-600 underline">Reschedule</button>
-                        <span className="text-slate-300">|</span>
+                        {appt.status !== 'Paid' && (
+                          <>
+                            <button onClick={() => handleRescheduleClick(appt)} className="text-xs font-medium text-slate-600 hover:text-blue-600 underline">Reschedule</button>
+                            <span className="text-slate-300">|</span>
+                          </>
+                        )}
                         <button onClick={() => handleCancelClick(appt._id)} className="text-xs font-medium text-red-500 hover:text-red-700 underline">Cancel</button>
                       </div>
                     )}
@@ -214,18 +244,18 @@ const PatientDashboard = () => {
                     {/* Video Call Button */}
                     <button 
                       onClick={() => handleVideoCall(appt)}
-                      disabled={appt.status !== 'Paid' && appt.status !== 'Completed'}
+                      disabled={appt.status !== 'Paid'}
                       className={`h-11 px-4 font-bold rounded-lg transition shadow-sm flex items-center justify-center gap-2 text-sm ${
-                        appt.status === 'Paid' || appt.status === 'Completed'
+                        appt.status === 'Paid'
                           ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
                           : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                       }`}
-                      title={isAppointmentToday(appt.date) ? 'Join video consultation' : 'Available on appointment date'}
+                      title={appt.status === 'Completed' ? 'Video call is closed after completion' : (isAppointmentToday(appt.date) ? 'Join video consultation' : 'Available on appointment date')}
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
-                      Video Call
+                      {appt.status === 'Completed' ? 'Call Ended' : 'Video Call'}
                     </button>
                   </div>
 

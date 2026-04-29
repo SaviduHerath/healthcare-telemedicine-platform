@@ -6,6 +6,7 @@ const Telemedicine = () => {
   const location = useLocation();
   const [sessions, setSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState(null);
+  const [joinError, setJoinError] = useState("");
   const [doctors, setDoctors] = useState([]);
   const [patients, setPatients] = useState([]);
 
@@ -14,11 +15,52 @@ const Telemedicine = () => {
 
   const API_BASE = "http://localhost:5003/api/telemedicine";
 
+  const normalizeId = (value) => {
+    if (!value) return "";
+    if (typeof value === "string") return value.trim().toLowerCase();
+    if (typeof value === "object") {
+      if (value._id) return String(value._id).trim().toLowerCase();
+      if (value.id) return String(value.id).trim().toLowerCase();
+      if (value.$oid) return String(value.$oid).trim().toLowerCase();
+      if (typeof value.toString === "function") return String(value.toString()).trim().toLowerCase();
+    }
+    return String(value).trim().toLowerCase();
+  };
+
   // 1. Catch data passed from the Patient Dashboard navigate()
   useEffect(() => {
     if (location.state && location.state.appointment) {
       const appt = location.state.appointment;
-      
+      const loggedUserCandidates = [
+        normalizeId(loggedUser?._id),
+        normalizeId(loggedUser?.id),
+        normalizeId(loggedUser?.email)
+      ].filter(Boolean);
+
+      const appointmentCandidates = [
+        normalizeId(appt?.patientId),
+        normalizeId(appt?.doctorId),
+        normalizeId(appt?.patientEmail)
+      ].filter(Boolean);
+
+      const hasRoomName = typeof location.state.roomName === "string" && location.state.roomName.trim().length > 0;
+      const isAuthorized = loggedUserCandidates.some((candidate) =>
+        appointmentCandidates.includes(candidate)
+      );
+
+      if (!appt?._id || !hasRoomName) {
+        setJoinError("Unable to join this call: invalid appointment data.");
+        setSelectedSession(null);
+        return;
+      }
+
+      if (!isAuthorized) {
+        setJoinError("You are not authorized to join this consultation.");
+        setSelectedSession(null);
+        return;
+      }
+
+      setJoinError("");
       setSelectedSession({
         _id: appt._id,
         doctorId: appt.doctorId,
@@ -64,7 +106,9 @@ const Telemedicine = () => {
                </svg>
             </div>
             <h3 className="text-lg font-bold text-slate-800">No Active Call</h3>
-            <p className="text-slate-500 mt-1">Select an appointment from your dashboard to start a video call.</p>
+            <p className="text-slate-500 mt-1">
+              {joinError || "Select an appointment from your dashboard to start a video call."}
+            </p>
           </div>
         ) : (
           /* ACTIVE VIDEO CALL INTERFACE */

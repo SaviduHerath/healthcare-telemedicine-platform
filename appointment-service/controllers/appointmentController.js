@@ -202,6 +202,14 @@ export const updatePatientAppointment = async (req, res) => {
     const appointmentToUpdate = await Appointment.findById(id);
     if (!appointmentToUpdate) return res.status(404).json({ message: 'Appointment not found' });
 
+    // Once video call becomes available (Paid), rescheduling is locked.
+    // Cancellation remains allowed through delete endpoint.
+    if (appointmentToUpdate.status === 'Paid' || appointmentToUpdate.status === 'Completed') {
+      return res.status(400).json({
+        message: 'Rescheduling is not allowed after video call is enabled. You can still cancel this appointment.'
+      });
+    }
+
     // Collision check
     const existing = await Appointment.findOne({ 
       doctorId: appointmentToUpdate.doctorId, 

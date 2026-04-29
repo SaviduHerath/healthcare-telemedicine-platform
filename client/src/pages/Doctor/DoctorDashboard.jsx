@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom'; // 1. Import useNavigate
 import { getDoctorAppointments, updateAppointmentStatus } from '../../api/appointmentService';
+import { getAppointmentRoomName } from '../../utils/telemedicineRoom';
 
 const DoctorDashboard = () => {
   const navigate = useNavigate(); // 2. Initialize navigate
@@ -32,7 +33,7 @@ const DoctorDashboard = () => {
   // 3. Navigation handler for Video Call
   const handleVideoCall = (appt) => {
     // We use the same room naming logic as the Patient Dashboard
-    const roomName = `appt-${appt._id}`;
+    const roomName = getAppointmentRoomName(appt._id);
     navigate('/telemedicine', { 
       state: { 
         roomName, 

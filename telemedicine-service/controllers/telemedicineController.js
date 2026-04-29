@@ -25,7 +25,7 @@ exports.createSession = async (req, res) => {
 
     const newSession = new Session({
       patientId,
-      patientName: patientName || "Unknown Patient", // Save patient name
+      patientName: patientName || "Unknown Patient",
       doctorId,
       date,
       time,
