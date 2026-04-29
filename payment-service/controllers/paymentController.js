@@ -119,6 +119,23 @@ export const createBankTransferPayment = async (req, res) => {
             });
         }
 
+        // Dedupe guard: prevent multiple pending bank-transfer rows
+        // (common when users click submit multiple times).
+        const existingPending = await Payment.findOne({
+            appointmentId,
+            patientId,
+            paymentMethod: 'bank_transfer',
+            status: 'Pending'
+        });
+
+        if (existingPending) {
+            return res.status(200).json({
+                message: 'A pending bank transfer already exists for this appointment.',
+                paymentId: existingPending._id,
+                payment: existingPending
+            });
+        }
+
         // Create payment record
         const payment = await Payment.create({
             appointmentId,
@@ -184,8 +201,10 @@ export const verifyPayment = async (req, res) => {
         const { paymentId } = req.params;
         const { adminId, adminNotes, status } = req.body;
 
-        const payment = await Payment.findByIdAndUpdate(
-            paymentId,
+        // Atomic guard: only a Pending payment can be verified.
+        // Prevents duplicate notifications from repeated admin clicks/requests.
+        const payment = await Payment.findOneAndUpdate(
+            { _id: paymentId, status: 'Pending' },
             {
                 status: status || 'Verified',
                 adminVerified: true,
@@ -197,7 +216,13 @@ export const verifyPayment = async (req, res) => {
         );
 
         if (!payment) {
-            return res.status(404).json({ message: 'Payment not found' });
+            const existing = await Payment.findById(paymentId).lean();
+            if (!existing) {
+                return res.status(404).json({ message: 'Payment not found' });
+            }
+            return res.status(409).json({
+                message: `Payment already processed with status: ${existing.status}`
+            });
         }
 
         // Mark the related appointment as Paid so the patient can start video call.
@@ -236,8 +261,9 @@ export const rejectPayment = async (req, res) => {
         const { paymentId } = req.params;
         const { adminId, adminNotes } = req.body;
 
-        const payment = await Payment.findByIdAndUpdate(
-            paymentId,
+        // Atomic guard: only a Pending payment can be rejected.
+        const payment = await Payment.findOneAndUpdate(
+            { _id: paymentId, status: 'Pending' },
             {
                 status: 'Declined',
                 adminVerifiedBy: adminId,
@@ -246,6 +272,16 @@ export const rejectPayment = async (req, res) => {
             },
             { returnDocument: 'after' } // Mongoose 8+: replaces deprecated { new: true }
         );
+
+        if (!payment) {
+            const existing = await Payment.findById(paymentId).lean();
+            if (!existing) {
+                return res.status(404).json({ message: 'Payment not found' });
+            }
+            return res.status(409).json({
+                message: `Payment already processed with status: ${existing.status}`
+            });
+        }
 
         // Send rejection email to patient
         await sendNotification(

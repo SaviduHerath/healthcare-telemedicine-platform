@@ -169,6 +169,11 @@ spec:
                 configMapKeyRef:
                   name: healthcare-config
                   key: NOTIFICATION_SERVICE_URL
+            - name: DOCTOR_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: healthcare-config
+                  key: DOCTOR_SERVICE_URL
           volumeMounts:
             - name: appointment-uploads
               mountPath: /app/uploads

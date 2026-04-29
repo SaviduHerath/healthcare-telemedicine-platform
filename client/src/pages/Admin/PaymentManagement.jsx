@@ -4,6 +4,7 @@ import { getPendingPayments, verifyPayment, rejectPayment } from '../../api/paym
 const AdminPaymentManagement = () => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [verifyModal, setVerifyModal] = useState({ isOpen: false, paymentId: null, notes: '' });
@@ -29,6 +30,8 @@ const AdminPaymentManagement = () => {
   };
 
   const handleVerifyPayment = async () => {
+    if (actionLoading) return;
+    setActionLoading(true);
     try {
       await verifyPayment(verifyModal.paymentId, adminId, verifyModal.notes, 'Verified');
       alert('Payment verified successfully');
@@ -36,10 +39,14 @@ const AdminPaymentManagement = () => {
       fetchPayments();
     } catch (err) {
       alert('Failed to verify payment: ' + err.message);
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleRejectPayment = async () => {
+    if (actionLoading) return;
+    setActionLoading(true);
     try {
       await rejectPayment(rejectModal.paymentId, adminId, rejectModal.notes);
       alert('Payment rejected');
@@ -47,6 +54,8 @@ const AdminPaymentManagement = () => {
       fetchPayments();
     } catch (err) {
       alert('Failed to reject payment: ' + err.message);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -290,9 +299,10 @@ const AdminPaymentManagement = () => {
                 </button>
                 <button
                   onClick={handleVerifyPayment}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  disabled={actionLoading}
+                  className={`flex-1 px-4 py-2 text-white rounded-lg ${actionLoading ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
                 >
-                  ✓ Verify
+                  {actionLoading ? 'Verifying...' : '✓ Verify'}
                 </button>
               </div>
             </div>
@@ -322,9 +332,10 @@ const AdminPaymentManagement = () => {
                 </button>
                 <button
                   onClick={handleRejectPayment}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  disabled={actionLoading}
+                  className={`flex-1 px-4 py-2 text-white rounded-lg ${actionLoading ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
                 >
-                  ✗ Reject
+                  {actionLoading ? 'Rejecting...' : '✗ Reject'}
                 </button>
               </div>
             </div>

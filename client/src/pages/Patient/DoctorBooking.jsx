@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios'; // Added for Notification Service
 import { getDoctorProfile } from '../../api/doctorService';
 import { getAvailableSlots, bookAppointment } from '../../api/appointmentService';
 
@@ -71,6 +70,8 @@ const DoctorBooking = () => {
       formData.append('patientPhone', storedUser.phoneNumber || storedUser.phone || '');
       formData.append('doctorId', doctor._id);
       formData.append('doctorName', doctor.fullName || doctor.name || 'Doctor');
+      formData.append('doctorEmail', doctor.email || '');
+      formData.append('doctorPhone', doctor.phoneNumber || doctor.phone || '');
       formData.append('date', selectedDate);
       formData.append('timeSlot', selectedSlot);
       formData.append('consultationFee', doctor.consultationFee || 1500);
@@ -78,21 +79,7 @@ const DoctorBooking = () => {
 
       await bookAppointment(formData);
 
-      // 2. TRIGGER NOTIFICATION (Handshake to Port 5008)
-      try {
-        await axios.post('http://localhost:5008/api/notifications/send-email-and-sms', {
-          toEmail: storedUser.email,
-          toPhone: storedUser.phoneNumber || storedUser.phone,
-          subject: "Appointment Booking Initiated",
-          message: `Hi ${patientData.name},\n\nYour appointment request for Dr. ${doctor.fullName || 'the doctor'} on ${selectedDate} at ${selectedSlot} has been successfully placed.\n\nPlease wait for the doctor to approve your request. We will notify you once it's confirmed.\n\nBest regards,\nHealthCare Team`
-        });
-        console.log("📧 Success: Notification request sent to Port 5008");
-      } catch (notifError) {
-        // Log notification failure but don't break the user's booking success UI
-        console.error("❌ Notification Error:", notifError.response?.data || notifError.message);
-      }
-
-      // 3. Update UI state
+      // 2. Update UI state
       setBookingStatus({ loading: false, success: true, error: null });
       
       // Refresh slots

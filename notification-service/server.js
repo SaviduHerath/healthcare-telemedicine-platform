@@ -1,6 +1,5 @@
 const express = require('express');
 const nodemailer = require('nodemailer');
-const twilio = require('twilio');
 const cors = require('cors');
 require('dotenv').config();
 
@@ -21,16 +20,6 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-const twilioEnabled = Boolean(
-  process.env.TWILIO_ACCOUNT_SID &&
-  process.env.TWILIO_AUTH_TOKEN &&
-  process.env.TWILIO_PHONE_NUMBER
-);
-
-const twilioClient = twilioEnabled
-  ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
-  : null;
-
 const textlkEnabled = Boolean(
   process.env.TEXTLK_API_TOKEN &&
   process.env.TEXTLK_SENDER_ID
@@ -39,10 +28,28 @@ const textlkEnabled = Boolean(
 const smsProvider = (process.env.SMS_PROVIDER || 'TEXT_LK').toUpperCase();
 
 const normalizePhoneNumber = (value = '') => {
-  const trimmed = String(value).trim();
-  if (!trimmed) return '';
-  if (trimmed.startsWith('+')) return trimmed;
-  return `+${trimmed}`;
+  const raw = String(value).trim();
+  if (!raw) return '';
+
+  // Keep digits and optional leading plus only.
+  const cleaned = raw.replace(/[^0-9+]/g, '');
+  if (!cleaned) return '';
+
+  // Already in E.164
+  if (cleaned.startsWith('+')) return cleaned;
+
+  // Sri Lanka local format 07XXXXXXXX -> +947XXXXXXXX
+  if (/^0\d{9}$/.test(cleaned)) {
+    return `+94${cleaned.slice(1)}`;
+  }
+
+  // Country-code format without plus: 94XXXXXXXXX -> +94XXXXXXXXX
+  if (/^94\d{9}$/.test(cleaned)) {
+    return `+${cleaned}`;
+  }
+
+  // Fallback: prepend plus to remaining numeric input
+  return `+${cleaned}`;
 };
 
 const sendEmail = (to, subject, message) => new Promise((resolve, reject) => {
@@ -94,18 +101,6 @@ const sendSms = async (to, message) => {
     return data;
   }
 
-  if (smsProvider === 'TWILIO') {
-    if (!twilioEnabled || !twilioClient) {
-      throw new Error('TWILIO SMS provider not configured');
-    }
-
-    return twilioClient.messages.create({
-      body: message,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: normalizedTo
-    });
-  }
-
   throw new Error(`Unsupported SMS provider: ${smsProvider}`);
 };
 
@@ -135,6 +130,7 @@ app.post('/api/notifications/send-sms', async (req, res) => {
 
 app.post('/api/notifications/send-email-and-sms', async (req, res) => {
   const { toEmail, toPhone, subject, message } = req.body;
+  console.log('send-email-and-sms request:', JSON.stringify({ toEmail: toEmail || null, toPhone: toPhone || null, subject }));
   const results = {
     email: { success: false, skipped: false, error: null },
     sms: { success: false, skipped: false, error: null }
@@ -163,9 +159,10 @@ app.post('/api/notifications/send-email-and-sms', async (req, res) => {
   }
 
   const hasSuccess = results.email.success || results.sms.success;
+  console.log('send-email-and-sms result:', JSON.stringify({ success: hasSuccess, results }));
   res.status(hasSuccess ? 200 : 500).json({
     success: hasSuccess,
-    smsConfigured: smsProvider === 'TEXT_LK' ? textlkEnabled : twilioEnabled,
+    smsConfigured: smsProvider === 'TEXT_LK' ? textlkEnabled : false,
     smsProvider,
     results
   });

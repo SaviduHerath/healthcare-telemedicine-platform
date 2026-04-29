@@ -2,19 +2,94 @@ import Appointment from '../models/Appointment.js';
 import axios from 'axios';
 
 const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:5008';
+const DOCTOR_SERVICE_URL = process.env.DOCTOR_SERVICE_URL || 'http://localhost:5002';
 
 // Helper function to call the Notification Service
 const sendNotification = async (email, phoneNumber, subject, message) => {
   try {
-    await axios.post(`${NOTIFICATION_SERVICE_URL}/api/notifications/send-email-and-sms`, {
+    const response = await axios.post(`${NOTIFICATION_SERVICE_URL}/api/notifications/send-email-and-sms`, {
       toEmail: email,
       toPhone: phoneNumber,
       subject,
       message
     });
+    console.log('Notification API response:', JSON.stringify({
+      toEmail: email || null,
+      toPhone: phoneNumber || null,
+      subject,
+      success: response?.data?.success,
+      results: response?.data?.results || null
+    }));
+
+    // Combined endpoint can return success=true even when SMS fails (if email succeeded).
+    const smsFailed = Boolean(
+      phoneNumber &&
+      response?.data?.results?.sms &&
+      response.data.results.sms.success === false &&
+      response.data.results.sms.skipped === false
+    );
+
+    if (smsFailed) {
+      try {
+        await axios.post(`${NOTIFICATION_SERVICE_URL}/api/notifications/send-sms`, {
+          to: phoneNumber,
+          message
+        });
+        console.log(`📱 SMS retry succeeded for ${phoneNumber}`);
+      } catch (smsError) {
+        console.error("❌ SMS retry failed:", smsError.response?.data || smsError.message);
+      }
+    }
+
     console.log(`📧/📱 Notification triggered for ${email || phoneNumber}`);
   } catch (error) {
     console.error("❌ Notification Service error:", error.response?.data || error.message);
+  }
+};
+
+// For critical status updates, call email/SMS endpoints separately so one channel
+// cannot mask failures in the other.
+const sendStatusNotification = async (email, phoneNumber, subject, message) => {
+  const tasks = [];
+  if (email) {
+    tasks.push(
+      axios.post(`${NOTIFICATION_SERVICE_URL}/api/notifications/send-email`, {
+        to: email,
+        subject,
+        message
+      })
+    );
+  }
+  if (phoneNumber) {
+    tasks.push(
+      axios.post(`${NOTIFICATION_SERVICE_URL}/api/notifications/send-sms`, {
+        to: phoneNumber,
+        message
+      })
+    );
+  }
+
+  const results = await Promise.allSettled(tasks);
+  results.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      console.error(`❌ Status notify channel ${index + 1} failed:`, result.reason?.response?.data || result.reason?.message);
+    }
+  });
+};
+
+// Helper: fetch doctor contact details for notification delivery.
+const getDoctorContact = async (doctorId) => {
+  try {
+    const response = await axios.get(`${DOCTOR_SERVICE_URL}/api/doctors/${doctorId}`);
+    const doctor = response.data || {};
+    return {
+      name: doctor.fullName || doctor.name || 'Doctor',
+      email: doctor.email || '',
+      phoneNumber: doctor.phoneNumber || doctor.phone || ''
+    };
+  } catch (error) {
+    console.error('❌ Doctor Service error (fetch contact):', error.response?.data || error.message);
+    return { name: 'Doctor', email: '', phoneNumber: '' };
   }
 };
 
@@ -53,7 +128,19 @@ export const getAvailableSlots = async (req, res) => {
 // POST /api/appointments/book
 export const bookAppointment = async (req, res) => {
   try {
-    const { patientId, patientName, patientEmail, patientPhone, doctorId, doctorName, date, timeSlot, consultationFee } = req.body;
+    const {
+      patientId,
+      patientName,
+      patientEmail,
+      patientPhone,
+      doctorId,
+      doctorName,
+      doctorEmail,
+      doctorPhone,
+      date,
+      timeSlot,
+      consultationFee
+    } = req.body;
 
     // Collision Check: Check if the slot is already booked
     const existingAppointment = await Appointment.findOne({
@@ -97,6 +184,23 @@ export const bookAppointment = async (req, res) => {
       'Appointment Booking Confirmation',
       `Dear ${patientName},\n\nThank you for booking an appointment with Dr. ${doctorName} on ${date} at ${timeSlot}.\n\nWe will notify you once the doctor approves your appointment.\n\nConsultation Fee: Rs. ${consultationFee || 1500}\n\nBest regards,\nHealthcare Platform Team`
     );
+
+    // Notify doctor about new pending booking if contact data is available.
+    const doctorContact = await getDoctorContact(doctorId);
+    const resolvedDoctorEmail = doctorContact.email || doctorEmail || '';
+    const resolvedDoctorPhone = doctorContact.phoneNumber || doctorPhone || '';
+    const resolvedDoctorName = doctorContact.name || doctorName || 'Doctor';
+
+    if (resolvedDoctorEmail || resolvedDoctorPhone) {
+      await sendNotification(
+        resolvedDoctorEmail,
+        resolvedDoctorPhone,
+        'New Appointment Request',
+        `Dear Dr. ${resolvedDoctorName},\n\nYou have a new appointment request from ${patientName} for ${date} at ${timeSlot}.\n\nPlease review and accept or decline this appointment in your dashboard.\n\nBest regards,\nHealthcare Platform Team`
+      );
+    } else {
+      console.warn(`⚠️ Doctor contact missing for doctorId=${doctorId}. Skipped doctor notification.`);
+    }
 
     res.status(201).json({ message: 'Appointment booked successfully', appointment: newAppointment });
   } catch (error) {
@@ -146,6 +250,12 @@ export const updateAppointmentStatus = async (req, res) => {
     }
 
     if ((status === 'Accepted' || status === 'Declined') && updatedAppointment.patientEmail) {
+      console.log('Status update notify payload:', JSON.stringify({
+        appointmentId: updatedAppointment._id,
+        status,
+        toEmail: updatedAppointment.patientEmail || null,
+        toPhone: updatedAppointment.patientPhone || null
+      }));
       const statusSubject = status === 'Accepted'
         ? 'Appointment Confirmed! ✅'
         : 'Appointment Update: Declined ❌';
@@ -153,7 +263,7 @@ export const updateAppointmentStatus = async (req, res) => {
         ? `Dear ${updatedAppointment.patientName},\n\nGreat news! Dr. ${updatedAppointment.doctorName} has accepted your appointment request for ${updatedAppointment.date} at ${updatedAppointment.timeSlot}.\n\nPlease ensure you are available at the scheduled time.\n\nThank you!`
         : `Dear ${updatedAppointment.patientName},\n\nWe regret to inform you that Dr. ${updatedAppointment.doctorName} is unavailable for the requested slot on ${updatedAppointment.date} at ${updatedAppointment.timeSlot}.\n\nYour appointment has been declined. Please try booking another time slot.\n\nApologies for any inconvenience.`;
 
-      await sendNotification(
+      await sendStatusNotification(
         updatedAppointment.patientEmail,
         updatedAppointment.patientPhone,
         statusSubject,
@@ -166,7 +276,7 @@ export const updateAppointmentStatus = async (req, res) => {
         ? `\n\nDoctor's quick note:\n${updatePayload.doctorCompletionNote}`
         : '';
 
-      await sendNotification(
+      await sendStatusNotification(
         updatedAppointment.patientEmail,
         updatedAppointment.patientPhone,
         'Appointment Completed - Doctor Note',
