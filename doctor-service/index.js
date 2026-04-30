@@ -34,7 +34,7 @@ const PORT = process.env.PORT || 5002;
 const MONGO_URI = process.env.MONGO_URI;
 
 // Database Connection & Server Start
-mongoose.connect(MONGO_URI)
+mongoose.connect(MONGO_URI, { family: 4 })
   .then(() => {
     console.log('✅ Doctor Service: Connected to MongoDB');
     // 0.0.0.0 prevents localhost Postman bugs

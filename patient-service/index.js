@@ -25,7 +25,7 @@ const PORT = process.env.PORT || 5001;
 const MONGO_URI = process.env.MONGO_URI;
 
 // Database Connection & Server Start
-mongoose.connect(MONGO_URI)
+mongoose.connect(MONGO_URI, { family: 4 })
   .then(() => {
     console.log('✅ Patient Service: Connected to MongoDB');
     // Using 0.0.0.0 prevents localhost connection refusal bugs
